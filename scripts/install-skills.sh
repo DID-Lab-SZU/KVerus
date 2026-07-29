@@ -1,0 +1,163 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+SKILLS_SRC="$REPO_ROOT/skills"
+
+usage() {
+    cat <<EOF
+Usage: $(basename "$0") [OPTIONS] <target-dir>
+
+Install KVerus skills into a target project directory.
+
+Arguments:
+  target-dir    Path to the target project root (must exist)
+
+Options:
+  -m, --mode <symlink|copy>   Installation mode (default: symlink)
+  -t, --targets <targets>     Comma-separated install targets: agent,claude (default: agent)
+                            agent: .agents/skills (supports both Codex and OpenCode)
+  -s, --skills <skills>       Comma-separated skill names to install (default: all)
+  -f, --force                 Overwrite existing installations
+  -h, --help                  Show this help
+
+Examples:
+  $(basename "$0") ~/my-project
+  $(basename "$0") --mode copy --targets agent,claude ~/my-project
+  $(basename "$0") --mode symlink --skills kverus-common,kverus-fix ~/my-project
+EOF
+    exit 0
+}
+
+MODE="symlink"
+TARGETS="agent"
+SKILLS=""
+FORCE=false
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        -m|--mode)
+            MODE="$2"
+            shift 2
+            ;;
+        -t|--targets)
+            TARGETS="$2"
+            shift 2
+            ;;
+        -s|--skills)
+            SKILLS="$2"
+            shift 2
+            ;;
+        -f|--force)
+            FORCE=true
+            shift
+            ;;
+        -h|--help)
+            usage
+            ;;
+        -*)
+            echo "Error: unknown option $1" >&2
+            exit 1
+            ;;
+        *)
+            TARGET_DIR="$1"
+            shift
+            ;;
+    esac
+done
+
+if [[ -z "${TARGET_DIR:-}" ]]; then
+    echo "Error: target directory is required" >&2
+    usage
+fi
+
+if [[ ! -d "$TARGET_DIR" ]]; then
+    echo "Error: target directory does not exist: $TARGET_DIR" >&2
+    exit 1
+fi
+
+if [[ "$MODE" != "symlink" && "$MODE" != "copy" ]]; then
+    echo "Error: mode must be 'symlink' or 'copy'" >&2
+    exit 1
+fi
+
+if [[ ! -d "$SKILLS_SRC" ]]; then
+    echo "Error: skills source directory not found: $SKILLS_SRC" >&2
+    exit 1
+fi
+
+TARGET_DIR="$(cd "$TARGET_DIR" && pwd)"
+
+# Collect skills to install
+if [[ -n "$SKILLS" ]]; then
+    IFS=',' read -ra SKILL_LIST <<< "$SKILLS"
+else
+    SKILL_LIST=()
+    for dir in "$SKILLS_SRC"/*/; do
+        [[ -d "$dir" ]] && SKILL_LIST+=("$(basename "$dir")")
+    done
+fi
+
+# Validate all skills exist before installing
+for skill in "${SKILL_LIST[@]}"; do
+    if [[ ! -d "$SKILLS_SRC/$skill" ]]; then
+        echo "Error: skill not found: $skill" >&2
+        exit 1
+    fi
+done
+
+install_skill() {
+    local skill="$1"
+    local dest_root="$2"
+    local dest="$dest_root/$skill"
+    local src="$SKILLS_SRC/$skill"
+
+    if [[ -e "$dest" || -L "$dest" ]]; then
+        if [[ "$FORCE" == true ]]; then
+            rm -rf "$dest"
+        else
+            echo "  SKIP $dest (already exists, use --force to overwrite)"
+            return
+        fi
+    fi
+
+    mkdir -p "$dest_root"
+
+    if [[ "$MODE" == "symlink" ]]; then
+        ln -s "$src" "$dest"
+        echo "  LINK $dest -> $src"
+    else
+        cp -R "$src" "$dest"
+        echo "  COPY $dest"
+    fi
+}
+
+IFS=',' read -ra TARGET_LIST <<< "$TARGETS"
+
+echo "Installing ${#SKILL_LIST[@]} skill(s) [mode=$MODE]"
+echo ""
+
+for target in "${TARGET_LIST[@]}"; do
+    case "$target" in
+        agent)
+            dest_root="$TARGET_DIR/.agents/skills"
+            echo "Target: .agents/skills/"
+            ;;
+        claude)
+            dest_root="$TARGET_DIR/.claude/skills"
+            echo "Target: .claude/skills/"
+            ;;
+        *)
+            echo "Error: unknown target '$target' (expected: agent, claude)" >&2
+            exit 1
+            ;;
+    esac
+
+    for skill in "${SKILL_LIST[@]}"; do
+        install_skill "$skill" "$dest_root"
+    done
+    echo ""
+done
+
+echo "Done."

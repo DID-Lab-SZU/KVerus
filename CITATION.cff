@@ -1,0 +1,41 @@
+cff-version: 1.2.0
+message: "If you use KVerus in your research, please cite the following paper."
+
+title: "KVerus"
+
+authors:
+  - given-names: "Yuwei"
+    family-names: "Liu"
+  - given-names: "Xinyi"
+    family-names: "Wan"
+  - given-names: "Yanhao"
+    family-names: "Wang"
+  - given-names: "Minghua"
+    family-names: "Wang"
+  - given-names: "Lin"
+    family-names: "Huang"
+  - given-names: "Tao"
+    family-names: "Wei"
+
+preferred-citation:
+  type: article
+
+  title: "KVerus: Scalable and Resilient Formal Verification Proof Generation for Rust Code"
+
+  authors:
+    - given-names: "Yuwei"
+      family-names: "Liu"
+    - given-names: "Xinyi"
+      family-names: "Wan"
+    - given-names: "Yanhao"
+      family-names: "Wang"
+    - given-names: "Minghua"
+      family-names: "Wang"
+    - given-names: "Lin"
+      family-names: "Huang"
+    - given-names: "Tao"
+      family-names: "Wei"
+
+  year: 2026
+
+  journal: "arXiv preprint arXiv:2605.03822"

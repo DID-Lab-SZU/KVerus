@@ -1,0 +1,36 @@
+version: "0.2"
+ignorePaths: []
+dictionaryDefinitions: []
+dictionaries: []
+words:
+  - Asterinas
+  - callees
+  - comprehender
+  - configer
+  - Diffy
+  - kverus
+  - langchain
+  - ollama
+  - opencode
+  - openspec
+  - pbar
+  - promex
+  - rustup
+  - setuptools
+  - triager
+  - Verus
+ignoreWords:
+  - miniforge
+  - fvts
+  - kspace
+  - forall
+  - mbpp
+  - pyproject
+  - myenv
+  - venv
+  - verusbench
+  - mathspec
+  - vostd
+  - vstd
+  - xtask
+import: []

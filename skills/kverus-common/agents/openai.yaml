@@ -1,0 +1,4 @@
+interface:
+  display_name: "KVerus Common"
+  short_description: "Shared Verus syntax and proof references for KVerus skills"
+  default_prompt: "Use this shared Verus reference skill when repairing, migrating, or specifying Verus code."
