@@ -1,4 +1,4 @@
 interface:
   display_name: "KVerus Common"
-  short_description: "Shared Verus syntax and proof references for KVerus skills"
-  default_prompt: "Use this shared Verus reference skill when repairing, migrating, or specifying Verus code."
+  short_description: "Shared Verus proof and Asterinas/VOSTD references"
+  default_prompt: "Use $kverus-common for Verus proofs, trust boundaries, and Asterinas/VOSTD conventions."

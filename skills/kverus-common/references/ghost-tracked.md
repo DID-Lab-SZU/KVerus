@@ -123,3 +123,12 @@ fn f(Tracked(x): Tracked<X>, Ghost(y): Ghost<Y>) {
 Symptom: tracked resource moved or duplicated incorrectly.
 
 Repair by following linear ownership: pass tracked tokens by `tracked` value when consuming, by `tracked &` or `tracked &mut` when borrowing/mutating, and use library split/join methods rather than copying.
+
+Symptom: `expression has mode spec, expected mode proof` when assigning a spec
+collection update, such as `Set::insert`, to a ghost or tracked field.
+
+Repair by looking for proof-mode operations such as `tracked_insert`,
+`tracked_push`, split/join methods, or checked constructors. If none applies,
+reconsider the representation or report the proof as blocked. Treat it as a
+trusted boundary only when the value necessarily packages a concrete opaque or
+external resource; do not use `assume` to bypass the mode mismatch.

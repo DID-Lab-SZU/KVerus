@@ -1,6 +1,6 @@
 ---
 name: kverus-common
-description: Shared Verus guide-derived syntax and proof-pattern reference material for other KVerus skills. Use when Codex is repairing Verus verification failures, adding Verus specs, migrating Rust to Verus-compatible code, or is uncertain about Verus modes, ghost/tracked variables, loop invariants, quantifiers, specialized solvers, state-machine/concurrency guidance, or common verification-error repair patterns.
+description: Shared Rust/Verus proof references and Asterinas/VOSTD project practices for other KVerus skills. Use when Codex is repairing Verus failures, adding specifications, migrating Rust, classifying axioms or trusted boundaries, modeling external APIs, cleaning proof scaffolding, or working with Asterinas/VOSTD verification conventions.
 ---
 
 # KVerus Common
@@ -16,7 +16,9 @@ Before editing Verus code, load only the relevant reference:
 - Proof construction, quantifiers, arithmetic, bit-vector, or SMT context issues: read the relevant file under `references/` — `proof-localization.md`, `quantifiers.md`, `solvers.md`, `arithmetic-lemmas.md`, `calc-blocks.md`, `opaque-reveal.md`, `lemma-shape.md`, or `set-reasoning.md`.
 - Loop or recursive proof failures: read `references/invariants.md`.
 - `ghost`, `tracked`, `Tracked<T>`, `Ghost<T>`, `@`, or erasure issues: read `references/ghost-tracked.md`.
-- concurrency, invariants, permissions, or state-machine navigation: read `references/tokenized-state-machine.md`.
+- Axiom-like declarations, external API specifications, trusted boundaries, or proof cleanup: read `references/proof-engineering-and-trust-boundaries.md`.
+- Asterinas/VOSTD verification commands, repository context, external-spec placement, project proof conventions, or historical examples: read `references/asterinas-vostd-practices.md` in addition to the relevant general reference.
+- Concurrency, invariants, permissions, or state-machine navigation: read `references/tokenized-state-machine.md`.
 - Verus-unsupported features, forced rewrites, or trait associated constant limitations: read `references/unsupported-features/index.md`, then load the relevant topic file from that directory.
 
 If more detail is needed, follow the source links at the top of each reference into:
