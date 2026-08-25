@@ -2,7 +2,7 @@
 
 **Status:** Not supported
 **Category:** Multi-threading
-**Guide ref:** [features.md — Multi-threading](source/docs/guide/src/features.md)
+**Guide ref:** `source/docs/guide/src/features.md` — Multi-threading
 
 ## What's unsupported
 
@@ -22,38 +22,29 @@ fn increment(counter: &Mutex<u64>) {
 
 ### 1. Use vstd verified lock implementations
 
-Verus provides its own verified lock types with proof obligations:
+Current vstd provides `RwLock`, whose constructor takes an invariant predicate and whose handles must be released explicitly. This example follows `source/vstd/rwlock.rs`:
 
 ```rust
 use vstd::prelude::*;
-use vstd::lock::*;
+use vstd::rwlock::RwLock;
 
-fn increment(lock: &Lock<u64>)
-    // Lock carries an invariant that Verus can reason about
-{
-    let (val, guard) = lock.acquire();
-    // use val, then release guard
+fn example() {
+    let lock = RwLock::<u64, spec_fn(u64) -> bool>::new(
+        5,
+        Ghost(|v| v == 5 || v == 13),
+    );
+
+    let (value, write_handle) = lock.acquire_write();
+    assert(value == 5 || value == 13);
+    write_handle.release_write(13);
 }
 ```
 
-See: [vstd lock documentation](https://verus-lang.github.io/verus/verusdoc/vstd/lock/index.html)
+See: `source/vstd/rwlock.rs` and [vstd `rwlock` documentation](https://verus-lang.github.io/verus/verusdoc/vstd/rwlock/index.html).
 
-### 2. `external_body` wrapper
+### 2. Isolate a standard-library lock
 
-If you need `std::sync::Mutex` at runtime for compatibility:
-
-```rust
-#[verifier::external_body]
-struct VerifiedMutex<T> {
-    inner: std::sync::Mutex<T>,
-}
-
-#[verifier::external_body]
-fn lock_and_read<T: Copy>(m: &VerifiedMutex<T>) -> (val: T)
-{
-    *m.inner.lock().unwrap()
-}
-```
+If runtime compatibility requires `std::sync::Mutex` or `RwLock`, keep it in an unverified module and expose only supported values or a project-reviewed abstraction. Do not present an `external_body` wrapper as a verified lock: the lock semantics, poisoning, guard lifetime, panic behavior, and synchronization effects remain unchecked. Any trusted wrapper requires explicit permission from the active task and a contract audit.
 
 ### 3. Use vstd atomics for simple counters
 
@@ -72,11 +63,11 @@ See: [vstd atomic_ghost documentation](https://verus-lang.github.io/verus/verusd
 - `MutexGuard` and `RwLockReadGuard` / `RwLockWriteGuard` are also unsupported (they come from std).
 - `parking_lot::Mutex` and similar third-party locks are equally unsupported.
 - `Condvar` is unsupported.
-- vstd's `Lock` and atomics have different APIs — not a drop-in replacement.
+- vstd's `RwLock` and atomics have different APIs — they are not drop-in replacements for `std::sync` types.
 - `Mutex::new()` in a `static` (via `OnceLock` or `lazy_static!`) is unsupported on multiple levels.
 
 ## Related
 
 - [drop.md](drop.md) — `MutexGuard` relies on `Drop` for unlock
-- Verus guide: [concurrency](source/docs/guide/src/concurrency.md)
-- Verus guide: [interior mutability](source/docs/guide/src/interior_mutability.md)
+- Verus guide: `source/docs/guide/src/concurrency.md`
+- Verus guide: `source/docs/guide/src/interior_mutability.md`

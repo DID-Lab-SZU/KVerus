@@ -99,9 +99,12 @@ Avoid large structural rewrites.
 
 ## Transformation Rules
 
-### Rule 1: `verus!` wrapping
+### Rule 1: Attribute-first executable verification
 
-Wrap Rust items in `verus! { ... }` where appropriate.
+Prefer `#[verus_spec]` for executable functions and supported annotations on
+their loops, preserving native Rust signatures and bodies. Use `verus!` for
+spec/proof declarations, external specifications, and constructs unsupported by
+the active attribute syntax.
 
 Keep `use` statements outside `verus!` unless required by syntax.
 

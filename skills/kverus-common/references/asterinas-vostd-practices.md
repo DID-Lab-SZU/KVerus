@@ -11,6 +11,8 @@ Sources:
 - [PR #674 review](https://github.com/asterinas/vostd/pull/674#discussion_r3672552179)
 - [PR #677 review](https://github.com/asterinas/vostd/pull/677#discussion_r3682395055)
 - [PR #692 review](https://github.com/asterinas/vostd/pull/692)
+- [PR #699: prove `util::range_alloc`](https://github.com/asterinas/vostd/pull/699)
+- [PR #704: add B-tree specs to `vstd_extra`](https://github.com/asterinas/vostd/pull/704)
 
 Use this reference only for targets in the Asterinas/VOSTD repository. Apply the
 general proof and trust-boundary rules before these project-specific conventions.
@@ -47,7 +49,7 @@ item and its smallest verifier-demonstrated dependency closure.
 - For targets under `ostd/src/`, inspect the corresponding `ostd/specs/**`
   subsystem model when it defines the same concepts.
 - Inspect `crate::specs::arch::*`, `crate::specs::task::*`,
-  `verified_libs/vstd_extra`, `verified_libs/verified_bitflags`,
+  `verified_libs/vstd_extra`, `verified_libs/bitflags`,
   `verified_libs/ostd-pod`, and `ostd/libs/align_ext` only when imported or
   implicated by a verification failure.
 - Use `tools/verus/source/vstd` as the standard-library proof fallback when local
@@ -55,9 +57,19 @@ item and its smallest verifier-demonstrated dependency closure.
 
 ## External API Boundaries
 
+For a missing `std`, `core`, or `alloc` contract, follow
+`std-external-specifications.md` before applying these placement conventions.
+
 Place reusable external API specifications in
 `verified_libs/vstd_extra/src/external/<topic>.rs` and re-export them through the
 `external` module. Do not place an ad hoc assumption beside an OSTD caller.
+
+PR #699's `range_alloc` proof and the B-tree specifications split into PR #704
+are the model for this separation: keep the OSTD caller on the original
+standard-library API, place missing specifications and reusable models under
+`vstd_extra::external`, and import the relevant broadcast axiom group at the
+caller only when needed. Inspect the current files rather than copying the
+historical diff, because vstd coverage and Rust APIs may have changed.
 
 For each retained external helper, check that `requires` states the caller's
 safety obligations and `ensures` exposes the semantic facts callers use. Moving

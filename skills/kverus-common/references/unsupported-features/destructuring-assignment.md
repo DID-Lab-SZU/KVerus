@@ -2,7 +2,7 @@
 
 **Status:** Not supported
 **Category:** Expressions
-**Guide ref:** [features.md — Expressions and Statements](source/docs/guide/src/features.md)
+**Guide ref:** `source/docs/guide/src/features.md` — Expressions and Statements
 
 ## What's unsupported
 

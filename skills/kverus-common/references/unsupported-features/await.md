@@ -2,7 +2,7 @@
 
 **Status:** Not supported
 **Category:** Expressions
-**Guide ref:** [features.md — Expressions and Statements](source/docs/guide/src/features.md)
+**Guide ref:** `source/docs/guide/src/features.md` — Expressions and Statements
 
 ## What's unsupported
 
@@ -17,20 +17,20 @@ async fn example() {
 
 ## Workarounds
 
-### 1. Synchronous call via `external_body`
+### 1. Move `.await` to unverified orchestration
 
-Replace the awaited call with a synchronous `external_body` wrapper.
+Keep `.await` and the future in an unverified layer. Feed the completed, supported value into a verified function. This is architecture pseudocode, not Verus-checked async code:
 
 ```rust
-#[verifier::external_body]
-fn fetch_sync() -> (data: Vec<u8>)
-{
-    unimplemented!()
+// Verified computation.
+fn process(data: &Vec<u8>) -> (result: u64) {
+    // verified logic
 }
 
-fn example() -> (data: Vec<u8>)
-{
-    fetch_sync()
+// Unverified orchestration.
+async fn example() -> u64 {
+    let data = fetch().await;
+    process(&data)
 }
 ```
 
@@ -41,7 +41,7 @@ Structure the crate so all `.await` calls live in unverified async glue code, wh
 ## Edge cases
 
 - `.await` on a pinned future is doubly unsupported (`Pin` is also unsupported).
-- `futures::block_on` or `tokio::Runtime::block_on` inside `external_body` is valid at runtime since Verus ignores those bodies.
+- Putting `block_on` inside `external_body` does not verify the runtime, future, panic, or I/O behavior; it is a trusted boundary and requires explicit task permission.
 
 ## Related
 

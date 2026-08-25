@@ -2,7 +2,7 @@
 
 **Status:** Not supported
 **Category:** Expressions
-**Guide ref:** [features.md — Expressions and Statements](source/docs/guide/src/features.md)
+**Guide ref:** `source/docs/guide/src/features.md` — Expressions and Statements
 
 ## What's unsupported
 
@@ -32,20 +32,21 @@ let result = {
 
 ### 2. Move async blocks to unverified code
 
-Wrap the async block in an `external_body` function that returns the computed result synchronously.
+Keep the entire async block in an unverified orchestration layer and call verified functions only with supported plain values. The following is architecture pseudocode, not Verus-checked async code:
 
 ```rust
-#[verifier::external_body]
-fn compute_result() -> (r: u64)
-{
-    unimplemented!() // actual async logic lives here at runtime
+// Unverified layer.
+let result = async {
+    let input = some_async_op().await;
+    verified_compute(input)
 }
+.await;
 ```
 
 ## Edge cases
 
 - `async move { ... }` is equally unsupported.
-- Async blocks inside `external_body` functions are fine since Verus does not inspect those bodies.
+- Hiding an async block in `external_body` makes its behavior unchecked; use such a boundary only when the active task explicitly permits it and no unsupported type crosses the verified signature.
 
 ## Related
 

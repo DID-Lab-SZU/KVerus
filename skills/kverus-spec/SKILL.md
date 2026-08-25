@@ -24,11 +24,15 @@ If `knowledge` is missing, continue without it.
 
 ## Shared Verus References
 
-If adding specs requires Verus syntax, modes, loop invariants, `decreases`, `recommends`, ghost/tracked values, or spec/proof helper patterns, read the relevant reference under `../kverus-common/references/` before editing.
+Read `../kverus-common/references/verus-syntax-quickref.md` before annotating executable functions or loops. For other Verus syntax, modes, loop invariants, `decreases`, `recommends`, ghost/tracked values, or spec/proof helper patterns, read the relevant shared reference before editing.
 
 ## Objective
 
 Add only the specification structure needed to improve proof readiness of the target file.
+
+Prefer `#[verus_spec(...)]` for new executable-function contracts and supported
+loop annotations. Use `verus!` for spec/proof helpers and constructs that the
+active Verus attribute syntax cannot express.
 
 Focus on:
 

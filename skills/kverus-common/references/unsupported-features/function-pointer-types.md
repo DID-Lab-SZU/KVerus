@@ -2,7 +2,8 @@
 
 **Status:** Not supported
 **Category:** Types
-**Guide ref:** [features.md — Types and standard library functionality](source/docs/guide/src/features.md)
+**Guide ref:** `source/docs/guide/src/features.md` — Types and standard library functionality
+**Executable-function refs:** `source/docs/guide/src/exec_funs_as_values.md`, `examples/guide/higher_order_fns.rs`
 
 ## What's unsupported
 
@@ -20,20 +21,24 @@ let fp: fn(u64) -> u64 = my_function;
 
 ## Workarounds
 
-### 1. Use generic type parameters with `Fn` trait bounds
+### 1. Use a generic executable-function value
 
-Verus supports closures and `Fn`/`FnOnce` trait bounds. Replace function pointer parameters with generics:
+Verus supports reasoning about executable function values through `Fn`/`FnOnce` and the builtin `call_requires` and `call_ensures`. Preserve the function argument's contract rather than using an unconstrained generic call:
 
 ```rust
-fn apply<F: Fn(u64) -> u64>(f: F, x: u64) -> (result: u64)
+fn apply(f: impl Fn(u64) -> u64, x: u64) -> (result: u64)
+    requires
+        call_requires(f, (x,)),
+    ensures
+        call_ensures(f, (x,), result),
 {
     f(x)
 }
 ```
 
-### 2. Use `FSpec` for spec-mode function values
+### 2. Use `spec_fn` for spec-mode function values
 
-In specifications, use `spec_fn` (spec closures) or `FnSpec`:
+In specifications, use the `spec_fn` type:
 
 ```rust
 proof fn example(f: spec_fn(u64) -> u64)
@@ -45,7 +50,7 @@ proof fn example(f: spec_fn(u64) -> u64)
 
 ### 3. Use `external_body` dispatch
 
-If you need runtime function pointer dispatch (e.g., vtable-like patterns), wrap it:
+If runtime function-pointer dispatch cannot be represented with supported function values or an enum, an `external_body` dispatcher is a trusted boundary, not a verified workaround. Add one only when the active task explicitly permits it and after specifying the dispatch semantics; the following shape is illustrative only:
 
 ```rust
 #[verifier::external_body]

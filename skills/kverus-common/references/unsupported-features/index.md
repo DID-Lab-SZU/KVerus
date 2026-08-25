@@ -4,7 +4,7 @@ Quick index of Rust features that Verus does **not** support.
 Each file contains a description, code examples showing the unsupported pattern,
 recommended workarounds, and edge cases.
 
-Source: [Verus Guide — Supported Rust Features](source/docs/guide/src/features.md)
+Source: `source/docs/guide/src/features.md` (Verus Guide — Supported Rust Features)
 
 **Last synced with guide: 2026-05-13**
 

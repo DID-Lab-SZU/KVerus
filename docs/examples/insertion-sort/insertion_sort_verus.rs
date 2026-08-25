@@ -1,3 +1,5 @@
+#![feature(proc_macro_hygiene)]
+
 use vstd::prelude::*;
 
 verus! {
@@ -42,15 +44,19 @@ proof fn swap_preserves_multiset(s: Seq<u32>, a: int, b: int)
 
 }
 
-fn insertion_sort(nums: &mut Vec<u32>)
+} // verus!
+#[verus_spec(
     ensures
         sorted(final(nums)@),
         final(nums)@.to_multiset() == old(nums)@.to_multiset(),
-{
-    let ghost original = nums@;
+)]
+fn insertion_sort(nums: &mut Vec<u32>) {
+    proof_decl! {
+        let ghost original = nums@;
+    }
     let n = nums.len();
     let mut i = 1;
-    while i < n
+    #[verus_spec(
         invariant
             n == nums@.len(),
             1 <= i,
@@ -58,9 +64,10 @@ fn insertion_sort(nums: &mut Vec<u32>)
             sorted_before(nums@, i as int),
             nums@.to_multiset() == original.to_multiset(),
         decreases n - i,
-    {
+    )]
+    while i < n {
         let mut j = i;
-        while j > 0 && nums[j - 1] > nums[j]
+        #[verus_spec(
             invariant
                 n == nums@.len(),
                 i < n,
@@ -68,10 +75,13 @@ fn insertion_sort(nums: &mut Vec<u32>)
                 sorted_except_at(nums@, i + 1, j as int),
                 nums@.to_multiset() == original.to_multiset(),
             decreases j,
-        {
-            let ghost before = nums@;
+        )]
+        while j > 0 && nums[j - 1] > nums[j] {
+            proof_decl! {
+                let ghost before = nums@;
+            }
             nums.swap(j - 1, j);
-            proof {
+            proof! {
                 swap_preserves_multiset(before, (j - 1) as int, j as int);
             }
             j -= 1;
@@ -80,7 +90,6 @@ fn insertion_sort(nums: &mut Vec<u32>)
     }
 }
 
-} // verus!
 fn main() {
     let mut empty = vec![];
     insertion_sort(&mut empty);

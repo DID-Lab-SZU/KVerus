@@ -51,10 +51,14 @@ spec fn sorted(s: Seq<u32>) -> bool {
     forall|a: int, b: int| 0 <= a < b < s.len() ==> s[a] <= s[b]
 }
 
-fn insertion_sort(nums: &mut Vec<u32>)
+#[verus_spec(
     ensures
         sorted(final(nums)@),
         final(nums)@.to_multiset() == old(nums)@.to_multiset(),
+)]
+fn insertion_sort(nums: &mut Vec<u32>) {
+    // Original executable insertion-sort body.
+}
 ```
 
 The generated contract proves, for every input length:

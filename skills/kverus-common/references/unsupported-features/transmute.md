@@ -2,7 +2,7 @@
 
 **Status:** Not supported
 **Category:** Unsafe
-**Guide ref:** [features.md — Unsafe](source/docs/guide/src/features.md)
+**Guide ref:** `source/docs/guide/src/features.md` — Unsafe
 
 ## What's unsupported
 

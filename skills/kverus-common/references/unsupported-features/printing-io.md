@@ -2,7 +2,7 @@
 
 **Status:** Not supported
 **Category:** Types / Standard Library
-**Guide ref:** [features.md — Types and standard library functionality](source/docs/guide/src/features.md)
+**Guide ref:** `source/docs/guide/src/features.md` — Types and standard library functionality
 
 ## What's unsupported
 
@@ -46,9 +46,9 @@ fn main() {
 }
 ```
 
-### 2. `external_body` for logging
+### 2. Trusted `external_body` boundary for logging
 
-If you need logging calls in otherwise-verified code:
+Use this only when the active task permits a trusted boundary and the project accepts unchecked logging behavior:
 
 ```rust
 #[verifier::external_body]
@@ -58,26 +58,27 @@ fn debug_log(msg: &str)
 }
 ```
 
-This is safe because `debug_log` has no postconditions — Verus trusts nothing about its behavior.
+With no postconditions, callers derive no functional result facts from `debug_log`, but Verus still does not check its body, termination, panic behavior, or side effects. This remains a trusted boundary.
 
-### 3. `external_fn_specification` for format-free wrappers
+### 3. Unverified adapter for result-bearing I/O
 
-If you have a simple I/O function that doesn't use format strings:
+Keep result-bearing filesystem or network operations in an unverified adapter. The following is architecture pseudocode, not a Verus-checked example:
 
 ```rust
-#[verifier::external_body]
-fn write_bytes(path: &str, data: &[u8]) -> (result: Result<(), IoError>)
-{
-    unimplemented!()
+// Unverified crate or module.
+fn write_bytes(path: &str, data: &[u8]) -> std::io::Result<()> {
+    std::fs::write(path, data)
 }
 ```
+
+If verified callers need a contract for such an adapter, design and review that trusted contract under `../proof-engineering-and-trust-boundaries.md`; do not infer filesystem semantics from this sketch.
 
 ## Edge cases
 
 - `format!` is unsupported because it relies on `Debug`/`Display` traits (see [debug-serde-traits.md](debug-serde-traits.md)).
 - `write!` / `writeln!` to a `Vec<u8>` or `String` buffer is also unsupported.
 - `panic!` with format args is unsupported; `panic!("literal")` may work in some contexts.
-- `#[test]` functions that use `println!` are fine — Verus doesn't verify test functions.
+- Test code may be excluded by a project's Verus configuration, but do not assume every `#[test]` function is automatically outside verification; check the active command.
 
 ## Related
 

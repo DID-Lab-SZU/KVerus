@@ -23,10 +23,8 @@ rg -n "tokenized_state_machine|sharding|InstanceId|opens_invariants" source/vstd
 
 Use the guide-derived references for adjacent proof issues:
 
-- `references/ghost-tracked.md`: `ghost`, `tracked`, `Tracked<T>`, and `Ghost<T>` variable modes.
-- `references/ghost-tracked.md`: tracked ghost state for interior mutability patterns.
-- `references/tokenized-state-machine.md`: guide-backed navigation for invariant-opening and state-machine-adjacent topics.
-- `references/invariants.md`: loop invariants that relate executable state to ghost/spec state.
+- `ghost-tracked.md`: `ghost`, `tracked`, `Tracked<T>`, and `Ghost<T>` modes, including tracked ghost state used with interior mutability.
+- `invariants.md`: loop invariants that relate executable state to ghost/spec state.
 
 ## Practical Rule
 

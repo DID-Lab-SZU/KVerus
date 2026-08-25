@@ -2,7 +2,7 @@
 
 **Status:** Not supported
 **Category:** Traits
-**Guide ref:** [features.md — Traits](source/docs/guide/src/features.md)
+**Guide ref:** `source/docs/guide/src/features.md` — Traits
 
 ## What's unsupported
 

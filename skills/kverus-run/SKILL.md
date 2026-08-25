@@ -80,7 +80,7 @@ For each file in `FILE_LIST`:
    - Preserve structure: item order, function order, impl blocks, comments.
 
 3. Follow the `kverus-migrate` transformation rules:
-   - `verus!` wrapping where appropriate.
+   - Attribute-first verification for executable functions; `verus!` for spec/proof declarations and unsupported attribute positions.
    - `#[verifier::external_body]` for functions to skip during proof.
    - Unsupported features: keep originals as comments, rewrite minimally.
    - Minimally adapt dependencies.
@@ -117,7 +117,7 @@ For each file in `FILE_LIST` that succeeded in Phase 1:
 
 1. Follow the `kverus-spec` skill workflow:
    - Inspect the target file.
-   - Add specification structure incrementally: `requires`, `ensures`, loop invariants, `decreases`, `recommends`, `spec fn`, ghost/spec helpers.
+   - Add specification structure incrementally, preferring `#[verus_spec(...)]` for executable-function contracts and supported loop annotations; use `verus!` for spec/proof helpers and unsupported attribute positions.
    - Run the verification command after meaningful changes.
    - Use verification results to guide follow-up edits.
 

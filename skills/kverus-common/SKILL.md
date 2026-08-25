@@ -17,25 +17,32 @@ Before editing Verus code, load only the relevant reference:
 - Loop or recursive proof failures: read `references/invariants.md`.
 - `ghost`, `tracked`, `Tracked<T>`, `Ghost<T>`, `@`, or erasure issues: read `references/ghost-tracked.md`.
 - Axiom-like declarations, external API specifications, trusted boundaries, or proof cleanup: read `references/proof-engineering-and-trust-boundaries.md`.
+- Missing or incomplete vstd specifications for `std`, `core`, or `alloc` APIs: read `references/std-external-specifications.md` together with `references/proof-engineering-and-trust-boundaries.md`.
 - Asterinas/VOSTD verification commands, repository context, external-spec placement, project proof conventions, or historical examples: read `references/asterinas-vostd-practices.md` in addition to the relevant general reference.
 - Concurrency, invariants, permissions, or state-machine navigation: read `references/tokenized-state-machine.md`.
 - Verus-unsupported features, forced rewrites, or trait associated constant limitations: read `references/unsupported-features/index.md`, then load the relevant topic file from that directory.
 
-If more detail is needed, follow the source links at the top of each reference into:
+## Source Path Resolution
 
-- `database/verified/code/tools/verus/source/docs/guide/src`
+Resolve every citation from the target workspace; never assume a machine-specific absolute path.
+
+1. Start at the target repository root. If it contains `ostd/`, `verified_libs/`, and `tools/verus/`, treat it as the VOSTD root and `tools/verus/` as the Verus root.
+2. If that layout is absent, inspect the verification command, repository scripts and configuration, and submodule metadata to locate the active Verus checkout. Accept a candidate as the Verus root only when it contains the cited `source/docs/guide/src` and `source/vstd` trees.
+3. Resolve `source/docs/...`, `source/vstd/...`, and `examples/...` relative to the discovered Verus root. Resolve `ostd/...`, `verified_libs/...`, and `tools/verus/...` relative to the discovered VOSTD root.
+4. Keep citations in these root-relative forms instead of resolving them against the skill directory. Confirm a cited file exists before relying on it; if no active checkout can be located, report the unresolved citation rather than inventing a path.
 
 ## Global Verus Guide Rules
 
 Carry these rules into all KVerus skills unless the user explicitly requests a different policy:
 
 1. Follow the active task skill's hard constraints for whether contracts, executable code, assumptions, or external bodies may be changed.
-2. Use `requires`, `ensures`, `assert`, loop invariants, and helper lemmas as the modular verification tools described by the guide.
-3. Use `expr@` as the guide's shorthand for `expr.view()` when working with abstract views.
-4. For loops, add invariants strong enough for entry, preservation, and exit reasoning; include surrounding facts explicitly when loop isolation requires them.
-5. Use `assert(...) by (bit_vector)` for bitwise facts, `assert(...) by (compute_only)` for fully computable spec facts, and `assert(...) by (nonlinear_arith)` for nonlinear arithmetic facts.
-6. Treat `#[verifier::external_body]` as a trusted verified/unverified boundary, not as an ordinary proof hint.
+2. When the active Verus version supports it, prefer `#[verus_spec(...)]` for newly added contracts and loop annotations on executable Rust. Keep `verus!` primarily for spec/proof declarations, external specifications, and syntax that attributes cannot express.
+3. Use `requires`, `ensures`, `assert`, loop invariants, and helper lemmas as the modular verification tools described by the guide.
+4. Use `expr@` as the guide's shorthand for `expr.view()` when working with abstract views.
+5. For loops, add invariants strong enough for entry, preservation, and exit reasoning; include surrounding facts explicitly when loop isolation requires them.
+6. Use `assert(...) by (bit_vector)` for bitwise facts, `assert(...) by (compute_only)` for fully computable spec facts, and `assert(...) by (nonlinear_arith)` for nonlinear arithmetic facts.
+7. Treat `#[verifier::external_body]` as a trusted verified/unverified boundary, not as an ordinary proof hint.
 
 ## Source Basis
 
-This skill summarizes the local Verus guide under `database/verified/code/tools/verus/source/docs/guide/src`.
+This skill summarizes the Verus guide under `source/docs/guide/src`, resolved against the Verus root above.

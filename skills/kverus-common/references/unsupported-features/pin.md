@@ -2,7 +2,7 @@
 
 **Status:** Not supported
 **Category:** Types / Standard Library
-**Guide ref:** [features.md — Types and standard library functionality](source/docs/guide/src/features.md)
+**Guide ref:** `source/docs/guide/src/features.md` — Types and standard library functionality
 
 ## What's unsupported
 
@@ -24,25 +24,20 @@ fn process(pinned: Pin<&mut MyStruct>) {
 If pinning is only needed for async (e.g., `Future::poll`), and you've moved async out of the verified boundary, replace `Pin<&mut T>` with `&mut T` in the verified interface.
 
 ```rust
+// Illustrative verified-interface shape; `is_valid` is a project spec method.
 fn process(data: &mut MyStruct) -> (result: u64)
-    requires old(data).is_valid(),
+    requires data.is_valid(),
     ensures data.is_valid(),
 {
     // verified logic
 }
 ```
 
-### 2. `external_body` wrapper
+`old(...)` belongs in post-state reasoning; do not use `old(data)` in a `requires` clause.
 
-If you need `Pin` at runtime (e.g., interfacing with an async runtime or self-referential struct), wrap the pinned operation:
+### 2. Keep `Pin` outside the verified boundary
 
-```rust
-#[verifier::external_body]
-fn poll_future(cx: &mut Context) -> (result: Poll<Output>)
-{
-    unimplemented!()
-}
-```
+If an async runtime or dependency requires `Pin`, keep the pinned value and polling operation in an unverified crate or module. Exchange only Verus-supported plain values with verified code. An `external_body` does not make an unsupported type usable in a verified signature, and introducing any trusted wrapper still requires permission from the active task skill and a separately audited contract.
 
 ### 3. Avoid self-referential types
 
@@ -52,7 +47,7 @@ The main Rust use case for `Pin` is self-referential types. In verified code, re
 
 - `Pin<Box<T>>` is also unsupported, even though `Box<T>` is supported.
 - `Unpin` trait bounds are ignored by Verus but the `Pin` wrapper itself is still rejected.
-- If a dependency's API requires `Pin`, you must wrap that dependency call in `external_body`.
+- If a dependency's API requires `Pin`, isolate that API outside the verified boundary; do not assume an `external_body` signature containing `Pin` will type-check.
 
 ## Related
 

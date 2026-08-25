@@ -67,7 +67,7 @@ Common missing invariants:
 - Frame facts about unchanged fields.
 - Accumulated quantified facts over processed indices.
 
-See `references/invariants.md`.
+See `invariants.md`.
 
 ## Arithmetic Overflow or Underflow
 
@@ -97,9 +97,9 @@ Preferred repairs:
 
 - Move proof-only calls into a `proof { ... }` block.
 - Use `Tracked<T>` or `Ghost<T>` wrappers for ghost/tracked values crossing exec signatures.
-- Unwrap `Tracked<T>` or `Ghost<T>` values with the pattern forms shown in `references/ghost-tracked.md`.
+- Unwrap `Tracked<T>` or `Ghost<T>` values with the pattern forms shown in `ghost-tracked.md`.
 
-See `references/ghost-tracked.md`.
+See `ghost-tracked.md`.
 
 ## Quantifier or Trigger Failure
 
@@ -122,7 +122,7 @@ assert forall|i: int| 0 <= i < n implies P(i) by {
 };
 ```
 
-See `references/quantifiers.md`.
+See `quantifiers.md`.
 
 ## Termination Failure
 

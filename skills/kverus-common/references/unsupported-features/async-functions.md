@@ -2,7 +2,7 @@
 
 **Status:** Not supported
 **Category:** Items
-**Guide ref:** [features.md — Items](source/docs/guide/src/features.md)
+**Guide ref:** `source/docs/guide/src/features.md` — Items
 
 ## What's unsupported
 
@@ -17,22 +17,24 @@ async fn fetch_data(url: &str) -> Result<Vec<u8>, Error> {
 
 ## Workarounds
 
-### 1. Synchronous wrapper with `external_body`
+### 1. Put async orchestration in an unverified layer
 
-Write the async logic in an unverified module and expose a synchronous interface to verified code.
+Keep the `async fn`, runtime, I/O, and `.await` operations outside the verified crate or module. Pass plain, supported values to verified computation. This is an architecture sketch; the async function itself is not checked by Verus:
 
 ```rust
-// In unverified code:
-pub async fn fetch_data_async(url: &str) -> Result<Vec<u8>, Error> { /* ... */ }
+// Verified computation: no async types or operations.
+fn decode(bytes: &Vec<u8>) -> (result: u64) {
+    // verified logic
+}
 
-// In verified code: call via external_body synchronous wrapper
-#[verifier::external_body]
-fn fetch_data(url: &str) -> (result: Result<Vec<u8>, Error>)
-{
-    // Call the async version using a runtime block_on or similar
-    unimplemented!()
+// Unverified orchestration layer.
+async fn fetch_and_decode(url: &str) -> Result<u64, Error> {
+    let bytes = fetch_data(url).await?;
+    Ok(decode(&bytes))
 }
 ```
+
+Do not use an `external_body` synchronous wrapper merely to hide async syntax. Such a wrapper would introduce an unchecked contract and may still expose unsupported types.
 
 ### 2. Factor async out of verified boundary
 
