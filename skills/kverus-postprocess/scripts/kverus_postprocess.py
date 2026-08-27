@@ -7,6 +7,7 @@ import argparse
 import json
 import os
 import re
+import secrets
 import subprocess
 import sys
 import time
@@ -162,10 +163,22 @@ def cache_status(payload: dict | None, ttl_seconds: int, now: int | None = None)
     return "fresh" if age < ttl_seconds else "stale"
 
 
+def refresh_lock_owner(lock_file: Path) -> str | None:
+    try:
+        payload = json.loads(lock_file.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    if not isinstance(payload, dict):
+        return None
+    token = payload.get("owner_token")
+    return token if isinstance(token, str) else None
+
+
 @contextmanager
 def refresh_lock(rule_repo: str):
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
     lock_file = lock_file_for_rule_repo(rule_repo)
+    owner_token = secrets.token_hex(16)
     try:
         descriptor = os.open(lock_file, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
     except FileExistsError:
@@ -181,7 +194,12 @@ def refresh_lock(rule_repo: str):
             pass
         descriptor = os.open(lock_file, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
     try:
-        os.write(descriptor, f"pid={os.getpid()}\ncreated_at={int(time.time())}\n".encode())
+        lock_payload = {
+            "created_at": int(time.time()),
+            "owner_token": owner_token,
+            "pid": os.getpid(),
+        }
+        os.write(descriptor, (json.dumps(lock_payload, sort_keys=True) + "\n").encode())
         os.close(descriptor)
         yield
     finally:
@@ -189,10 +207,11 @@ def refresh_lock(rule_repo: str):
             os.close(descriptor)
         except OSError:
             pass
-        try:
-            lock_file.unlink()
-        except FileNotFoundError:
-            pass
+        if refresh_lock_owner(lock_file) == owner_token:
+            try:
+                lock_file.unlink()
+            except FileNotFoundError:
+                pass
 
 
 def github_repo_api(rule_repo: str) -> str:
