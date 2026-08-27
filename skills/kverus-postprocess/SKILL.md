@@ -1,6 +1,6 @@
 ---
 name: kverus-postprocess
-description: "Final cleanup for Verus proof changes: refresh review rules, verify with a user-provided command, delegate redundant proof-assert removal to kverus-strip, re-verify, format, and run local checks. Use after proof-sensitive KVerus skill work or before finalizing Verus changes."
+description: "Final cleanup for Verus proof changes: consume cached dynamic review rules, delegate stale GitHub refreshes to a subagent, verify, simplify redundant proof code through kverus-strip, format, and run local checks. Use after proof-sensitive KVerus work or before finalizing Verus changes."
 ---
 
 # KVerus Postprocess
@@ -13,19 +13,39 @@ Set `AGENT_DIR` to the installed agent directory when running commands manually.
 - `target-path`: changed source paths to inspect and simplify, e.g. `src/,specs/`.
 - `verify-command`: full verification command. If unavailable, simplification must run in `--dry-run`.
 - `format-command`: project formatter command, e.g. `cargo fmt`, `make fmt`, or an equivalent.
+- Optional `rule-repo`: GitHub `owner/repo` used for dynamic review rules.
 - Optional scope controls: `blocked-path` for path prefixes that must not change, and `generated-path` for generated artifact prefixes.
 
 ## Workflow
 
-1. Refresh dynamic review rules and inspect findings:
+1. Inspect the dynamic-rule cache without accessing GitHub:
 
 ```bash
 . "$AGENT_DIR/kverus.env"
 "$KVERUS_PYTHON" "$AGENT_DIR/skills/kverus-postprocess/scripts/kverus_postprocess.py" \
+  --rule-repo <owner/repo> \
+  --cache-status
+```
+
+The default cache TTL is 72 hours. If the cache is `stale` or `missing` and subagents are available, delegate exactly one bounded refresh task to a subagent:
+
+```bash
+. "$AGENT_DIR/kverus.env"
+"$KVERUS_PYTHON" "$AGENT_DIR/skills/kverus-postprocess/scripts/kverus_postprocess.py" \
+  --rule-repo <owner/repo> \
+  --refresh-only
+```
+
+Tell the subagent to run only this command, preserve any old cache on failure, make no source edits, and return a concise status. Continue the main workflow immediately instead of waiting for GitHub. If subagents are unavailable, keep using the old cache or static rules; do not perform an automatic synchronous refresh in the main agent.
+
+Run the local checker with `--no-refresh-rules` so it only consumes the latest available cache:
+
+```bash
+"$KVERUS_PYTHON" "$AGENT_DIR/skills/kverus-postprocess/scripts/kverus_postprocess.py" \
   --base <base-ref> \
   --target-path <path1,path2> \
   --rule-repo <owner/repo> \
-  --refresh-rules
+  --no-refresh-rules
 ```
 
 Fix every `ERROR`. Review every `WARN` and fix it unless there is a clear reason to keep the code.
@@ -56,7 +76,7 @@ By default postprocess strips **only functions whose added diff lines (against `
 <format-command>
 ```
 
-6. Run the final local check:
+6. Run the final local check from cache only. Do not trigger a second GitHub refresh:
 
 ```bash
 . "$AGENT_DIR/kverus.env"
@@ -64,7 +84,7 @@ By default postprocess strips **only functions whose added diff lines (against `
   --base <base-ref> \
   --target-path <path1,path2> \
   --rule-repo <owner/repo> \
-  --refresh-rules
+  --no-refresh-rules
 git diff --check
 git status --short --branch
 ```
@@ -81,6 +101,8 @@ KVERUS_POSTPROCESS_GENERATED_PATHS='target/,doc/' \
   sh "$AGENT_DIR/skills/kverus-postprocess/scripts/run_postprocess.sh" <base-ref>
 ```
 
+The wrapper never performs a synchronous refresh by default. Set `KVERUS_POSTPROCESS_REFRESH_RULES=1` only for explicit manual runs outside an agent that intentionally need a blocking refresh; its final check still uses the resulting cache without refreshing again.
+
 ## Assert Simplification
 
 Postprocess does not own assert simplification logic. It delegates that phase to `kverus-strip`.
@@ -93,7 +115,9 @@ Set `KVERUS_POSTPROCESS_SKIP_SIMPLIFY=1` to skip assert simplification.
 
 ## Dynamic Rules
 
-Dynamic rules are refreshed from recent review and issue comments in the configured `--rule-repo`. If GitHub is unavailable, cached rules for that repo are used when available; otherwise static rules are used.
+Dynamic rules come from recent review and issue comments in the configured `--rule-repo`. Successful refreshes are cached for 72 hours. Normal checks use a fresh cache without network access; stale or missing caches should be refreshed by a subagent while the main workflow continues. A failed refresh preserves and uses the old cache regardless of age; without a cache, static rules remain available.
+
+`--refresh-rules` forces a synchronous refresh, `--no-refresh-rules` forbids network access, and `--rule-cache-ttl-hours` overrides the 72-hour TTL. Recent commit subjects are not fetched unless `--include-commit-context` is explicitly requested.
 
 ## Report
 

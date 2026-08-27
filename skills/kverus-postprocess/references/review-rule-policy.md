@@ -16,7 +16,7 @@ These static rules come from KVerus review practice and repository constraints:
 
 ## Dynamic Rule Refresh
 
-The postprocess script queries the GitHub API for recent pull requests, review comments, issue comments, and commit subjects from the configured `--rule-repo`.
+The postprocess refresh command queries the GitHub API for recent pull-request review comments and issue comments from the configured `--rule-repo`. Recent commit subjects are optional low-confidence context and are fetched only when explicitly requested.
 
 A comment is treated as a high-confidence rule only when:
 
@@ -25,6 +25,8 @@ A comment is treated as a high-confidence rule only when:
 - The body is relevant to proof style, trusted boundaries, comments, formatting, warnings, source parity, or verification hygiene.
 
 Commit subjects are lower confidence than review comments. They are collected as context and may produce informational hints, but should not produce hard errors by themselves.
+
+Successful refreshes are cached for 72 hours by default. Normal postprocess checks consume the cache without network access. When a cache is stale or missing, delegate a bounded `--refresh-only` operation to a subagent and continue the main workflow. GitHub failures must preserve the previous cache; do not retry, wait for a rate-limit reset, or block proof work.
 
 ## Severity
 

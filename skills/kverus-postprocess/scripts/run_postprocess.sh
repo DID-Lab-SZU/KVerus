@@ -14,8 +14,11 @@ INCLUDE_SKILLS="${KVERUS_POSTPROCESS_INCLUDE_SKILLS:-0}"
 BLOCKED_PATHS="${KVERUS_POSTPROCESS_BLOCKED_PATHS:-}"
 GENERATED_PATHS="${KVERUS_POSTPROCESS_GENERATED_PATHS:-}"
 SIMPLIFY_SCOPE="${KVERUS_POSTPROCESS_SIMPLIFY_SCOPE:-modified}"
+REFRESH_RULES="${KVERUS_POSTPROCESS_REFRESH_RULES:-0}"
 
 run_checker() {
+    refresh_mode="$1"
+    shift
     set -- "$CHECKER" --base "$BASE" --rule-repo "$RULE_REPO"
     if [ -n "$TARGET_PATHS" ]; then
         set -- "$@" --target-path "$TARGET_PATHS"
@@ -29,7 +32,12 @@ run_checker() {
     if [ -n "$GENERATED_PATHS" ]; then
         set -- "$@" --generated-path "$GENERATED_PATHS"
     fi
-    python3 "$@" --refresh-rules
+    if [ "$refresh_mode" = "refresh" ]; then
+        set -- "$@" --refresh-rules
+    else
+        set -- "$@" --no-refresh-rules
+    fi
+    python3 "$@"
 }
 
 run_simplifier() {
@@ -52,8 +60,12 @@ run_simplifier() {
     "$@"
 }
 
-echo "== kverus-postprocess: refresh rules and check =="
-run_checker || FIRST_STATUS=$?
+echo "== kverus-postprocess: load cached rules and check =="
+if [ "$REFRESH_RULES" = "1" ]; then
+    run_checker refresh || FIRST_STATUS=$?
+else
+    run_checker cache || FIRST_STATUS=$?
+fi
 : "${FIRST_STATUS:=0}"
 
 if [ -n "$VERIFY_CMD" ]; then
@@ -86,7 +98,7 @@ else
 fi
 
 echo "== kverus-postprocess: final check =="
-run_checker || FINAL_STATUS=$?
+run_checker cache || FINAL_STATUS=$?
 : "${FINAL_STATUS:=0}"
 
 echo "== kverus-postprocess: git diff --check =="

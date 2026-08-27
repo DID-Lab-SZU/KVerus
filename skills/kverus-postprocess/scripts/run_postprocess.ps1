@@ -16,8 +16,9 @@ $blockedPaths   = $env:KVERUS_POSTPROCESS_BLOCKED_PATHS
 $generatedPaths = $env:KVERUS_POSTPROCESS_GENERATED_PATHS
 $simplifyScope  = if ($env:KVERUS_POSTPROCESS_SIMPLIFY_SCOPE) { $env:KVERUS_POSTPROCESS_SIMPLIFY_SCOPE } else { 'modified' }
 $skipSimplify   = $env:KVERUS_POSTPROCESS_SKIP_SIMPLIFY
+$refreshRules   = $env:KVERUS_POSTPROCESS_REFRESH_RULES
 
-function Invoke-Checker {
+function Invoke-Checker([bool]$refresh) {
     $pyArgs = @($checker, '--base', $base, '--rule-repo', $ruleRepo)
     if ($targetPaths) {
         $pyArgs += '--target-path'
@@ -34,7 +35,11 @@ function Invoke-Checker {
         $pyArgs += '--generated-path'
         $pyArgs += $generatedPaths
     }
-    $pyArgs += '--refresh-rules'
+    if ($refresh) {
+        $pyArgs += '--refresh-rules'
+    } else {
+        $pyArgs += '--no-refresh-rules'
+    }
 
     python3 @pyArgs
 }
@@ -62,8 +67,8 @@ function Invoke-Simplifier {
     python3 @pyArgs
 }
 
-Write-Host '== kverus-postprocess: refresh rules and check =='
-Invoke-Checker
+Write-Host '== kverus-postprocess: load cached rules and check =='
+Invoke-Checker ($refreshRules -eq '1')
 if (-not $?) { $firstStatus = $LASTEXITCODE } else { $firstStatus = 0 }
 
 if ($verifyCmd) {
@@ -96,7 +101,7 @@ if ($formatCmd) {
 }
 
 Write-Host '== kverus-postprocess: final check =='
-Invoke-Checker
+Invoke-Checker $false
 if (-not $?) { $finalStatus = $LASTEXITCODE } else { $finalStatus = 0 }
 
 Write-Host '== kverus-postprocess: git diff --check =='

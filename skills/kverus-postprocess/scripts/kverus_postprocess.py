@@ -12,6 +12,7 @@ import sys
 import time
 import urllib.error
 import urllib.request
+from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable
@@ -20,6 +21,9 @@ from typing import Iterable
 SKILL_DIR = Path(__file__).resolve().parents[1]
 CACHE_DIR = SKILL_DIR / ".cache"
 DEFAULT_RULE_REPO = os.environ.get("KVERUS_POSTPROCESS_RULE_REPO", "")
+DEFAULT_CACHE_TTL_HOURS = 72.0
+DEFAULT_GITHUB_TIMEOUT = 4
+REFRESH_LOCK_MAX_AGE_SECONDS = 300
 
 
 def agent_dir() -> str:
@@ -137,6 +141,60 @@ def cache_file_for_rule_repo(rule_repo: str) -> Path:
     return CACHE_DIR / f"{safe_name or 'rules'}_review_rules.json"
 
 
+def lock_file_for_rule_repo(rule_repo: str) -> Path:
+    return cache_file_for_rule_repo(rule_repo).with_suffix(".lock")
+
+
+def cache_age_seconds(payload: dict | None, now: int | None = None) -> int | None:
+    if not payload:
+        return None
+    generated_at = payload.get("generated_at")
+    if not isinstance(generated_at, int):
+        return None
+    current = int(time.time()) if now is None else now
+    return max(0, current - generated_at)
+
+
+def cache_status(payload: dict | None, ttl_seconds: int, now: int | None = None) -> str:
+    age = cache_age_seconds(payload, now)
+    if age is None:
+        return "missing"
+    return "fresh" if age < ttl_seconds else "stale"
+
+
+@contextmanager
+def refresh_lock(rule_repo: str):
+    CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    lock_file = lock_file_for_rule_repo(rule_repo)
+    try:
+        descriptor = os.open(lock_file, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+    except FileExistsError:
+        try:
+            age = max(0, int(time.time() - lock_file.stat().st_mtime))
+        except OSError:
+            age = 0
+        if age < REFRESH_LOCK_MAX_AGE_SECONDS:
+            raise RuntimeError(f"dynamic rule refresh already in progress ({age}s)")
+        try:
+            lock_file.unlink()
+        except FileNotFoundError:
+            pass
+        descriptor = os.open(lock_file, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+    try:
+        os.write(descriptor, f"pid={os.getpid()}\ncreated_at={int(time.time())}\n".encode())
+        os.close(descriptor)
+        yield
+    finally:
+        try:
+            os.close(descriptor)
+        except OSError:
+            pass
+        try:
+            lock_file.unlink()
+        except FileNotFoundError:
+            pass
+
+
 def github_repo_api(rule_repo: str) -> str:
     return f"https://api.github.com/repos/{rule_repo.strip('/')}"
 
@@ -161,9 +219,31 @@ def summarize_body(body: str, limit: int = 220) -> str:
     return one_line[: limit - 3].rstrip() + "..."
 
 
-def collect_dynamic_rules(rule_repo: str, recent_prs: int, timeout: int) -> dict:
-    # Keep refresh cheap enough to run at every postprocess start. Repository-level
-    # comment and commit endpoints avoid N requests per PR and reduce rate-limit risk.
+def write_cache_atomically(rule_repo: str, payload: dict) -> None:
+    CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    cache_file = cache_file_for_rule_repo(rule_repo)
+    temporary = cache_file.with_name(f".{cache_file.name}.{os.getpid()}.tmp")
+    try:
+        temporary.write_text(
+            json.dumps(payload, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+        os.replace(temporary, cache_file)
+    finally:
+        try:
+            temporary.unlink()
+        except FileNotFoundError:
+            pass
+
+
+def collect_dynamic_rules(
+    rule_repo: str,
+    recent_prs: int,
+    timeout: int,
+    include_commit_context: bool = False,
+) -> dict:
+    # Repository-level comment endpoints avoid N requests per PR. Commit context is
+    # optional because it does not participate in dynamic-rule matching.
     repo_api = github_repo_api(rule_repo)
     review_comments = github_get_json(
         f"{repo_api}/pulls/comments?sort=updated&direction=desc&per_page={recent_prs}",
@@ -173,10 +253,12 @@ def collect_dynamic_rules(rule_repo: str, recent_prs: int, timeout: int) -> dict
         f"{repo_api}/issues/comments?sort=updated&direction=desc&per_page={recent_prs}",
         timeout,
     )
-    recent_commits = github_get_json(
-        f"{repo_api}/commits?per_page={recent_prs}",
-        timeout,
-    )
+    recent_commits: object = []
+    if include_commit_context:
+        recent_commits = github_get_json(
+            f"{repo_api}/commits?per_page={recent_prs}",
+            timeout,
+        )
 
     rules: list[dict] = []
     commits: list[dict] = []
@@ -197,17 +279,14 @@ def collect_dynamic_rules(rule_repo: str, recent_prs: int, timeout: int) -> dict
                 )
 
     payload = {
+        "schema_version": 2,
         "generated_at": int(time.time()),
         "repo": rule_repo,
         "recent_items": recent_prs,
         "rules": dedupe_rules(rules),
         "commit_context": commits[:80],
     }
-    CACHE_DIR.mkdir(parents=True, exist_ok=True)
-    cache_file_for_rule_repo(rule_repo).write_text(
-        json.dumps(payload, indent=2, sort_keys=True) + "\n",
-        encoding="utf-8",
-    )
+    write_cache_atomically(rule_repo, payload)
     return payload
 
 
@@ -271,8 +350,8 @@ def refresh_or_load_rules(args: argparse.Namespace, findings: list[Finding]) -> 
         findings.append(Finding("INFO", "Dynamic rule refresh skipped; no rule repo configured."))
         return {"rules": [], "commit_context": [], "generated_at": None}
 
+    cached = load_cached_rules(args.rule_repo)
     if args.no_refresh_rules:
-        cached = load_cached_rules(args.rule_repo)
         if cached:
             findings.append(
                 Finding(
@@ -284,8 +363,25 @@ def refresh_or_load_rules(args: argparse.Namespace, findings: list[Finding]) -> 
         findings.append(Finding("INFO", "Dynamic rule refresh skipped; no cache available."))
         return {"rules": [], "commit_context": [], "generated_at": None}
 
+    ttl_seconds = max(0, int(args.rule_cache_ttl_hours * 3600))
+    status = cache_status(cached, ttl_seconds)
+    if cached and status == "fresh" and not args.refresh_rules and not args.refresh_only:
+        findings.append(
+            Finding(
+                "INFO",
+                f"Dynamic rule cache hit; using rules from {format_age(cached.get('generated_at'))}.",
+            )
+        )
+        return cached
+
     try:
-        payload = collect_dynamic_rules(args.rule_repo, args.recent_prs, args.github_timeout)
+        with refresh_lock(args.rule_repo):
+            payload = collect_dynamic_rules(
+                args.rule_repo,
+                args.recent_prs,
+                args.github_timeout,
+                args.include_commit_context,
+            )
         findings.append(
             Finding(
                 "INFO",
@@ -293,7 +389,7 @@ def refresh_or_load_rules(args: argparse.Namespace, findings: list[Finding]) -> 
             )
         )
         return payload
-    except (urllib.error.URLError, TimeoutError, RuntimeError, OSError) as err:
+    except (urllib.error.URLError, TimeoutError, RuntimeError, OSError, json.JSONDecodeError) as err:
         cached = load_cached_rules(args.rule_repo)
         if cached:
             findings.append(
@@ -655,7 +751,7 @@ def print_rule_summary(payload: dict) -> None:
         for commit in commits[:8]:
             print(
                 "INFO:   "
-                f"PR #{commit.get('pr')} {commit.get('sha')}: {commit.get('summary')}"
+                f"{commit.get('sha')}: {commit.get('summary')}"
             )
         if len(commits) > 8:
             print(f"INFO:   ... {len(commits) - 8} more commit subjects")
@@ -674,6 +770,16 @@ def split_csv(values: list[str]) -> list[str]:
 def env_csv(name: str) -> list[str]:
     value = os.environ.get(name, "")
     return split_csv([value]) if value else []
+
+
+def env_float(name: str, default: float) -> float:
+    value = os.environ.get(name)
+    if value is None:
+        return default
+    try:
+        return float(value)
+    except ValueError:
+        return default
 
 
 def diff_paths_from_args(args: argparse.Namespace) -> list[str]:
@@ -728,17 +834,85 @@ def parse_args() -> argparse.Namespace:
         default=[],
         help="Path prefix or comma-separated prefixes for generated artifacts.",
     )
-    parser.add_argument("--recent-prs", type=int, default=20, help="Number of recent official PRs to inspect")
-    parser.add_argument("--github-timeout", type=int, default=12, help="GitHub request timeout in seconds")
-    parser.add_argument("--refresh-rules", action="store_true", help="Refresh GitHub rules; this is the default")
-    parser.add_argument("--no-refresh-rules", action="store_true", help="Skip GitHub refresh and use cache/static rules")
+    parser.add_argument("--recent-prs", type=int, default=20, help="Number of recent comments to inspect")
+    parser.add_argument(
+        "--github-timeout",
+        type=int,
+        default=DEFAULT_GITHUB_TIMEOUT,
+        help="GitHub request timeout in seconds",
+    )
+    parser.add_argument(
+        "--rule-cache-ttl-hours",
+        type=float,
+        default=env_float("KVERUS_POSTPROCESS_RULE_CACHE_TTL_HOURS", DEFAULT_CACHE_TTL_HOURS),
+        help="Reuse successful rule refreshes for this many hours (default: 72)",
+    )
+    rule_action = parser.add_mutually_exclusive_group()
+    rule_action.add_argument(
+        "--refresh-rules",
+        action="store_true",
+        help="Force a GitHub refresh even when the cache is fresh",
+    )
+    rule_action.add_argument(
+        "--no-refresh-rules",
+        action="store_true",
+        help="Skip GitHub refresh and use cache/static rules",
+    )
+    rule_action.add_argument(
+        "--refresh-only",
+        action="store_true",
+        help="Force-refresh the dynamic rule cache without inspecting the local git workspace",
+    )
+    rule_action.add_argument(
+        "--cache-status",
+        action="store_true",
+        help="Print dynamic rule cache status as JSON without network or git access",
+    )
+    parser.add_argument(
+        "--include-commit-context",
+        action="store_true",
+        help="Also fetch recent commit subjects; disabled by default because they are informational only",
+    )
     parser.add_argument("--print-rules", action="store_true", help="Print loaded static and dynamic rules")
     return parser.parse_args()
 
 
 def main() -> int:
     args = parse_args()
+    ttl_seconds = max(0, int(args.rule_cache_ttl_hours * 3600))
+    if args.cache_status:
+        cached = load_cached_rules(args.rule_repo) if args.rule_repo else None
+        age = cache_age_seconds(cached)
+        status = cache_status(cached, ttl_seconds) if args.rule_repo else "unconfigured"
+        print(
+            json.dumps(
+                {
+                    "age_seconds": age,
+                    "cache_path": str(cache_file_for_rule_repo(args.rule_repo)) if args.rule_repo else None,
+                    "repo": args.rule_repo or None,
+                    "rule_count": len(cached.get("rules", [])) if cached else 0,
+                    "status": status,
+                    "ttl_seconds": ttl_seconds,
+                },
+                sort_keys=True,
+            )
+        )
+        return 0
+
     findings: list[Finding] = []
+    if args.refresh_only:
+        args.refresh_rules = True
+        payload = refresh_or_load_rules(args, findings)
+        for finding in findings:
+            print_finding(finding)
+        failed = any("refresh failed" in finding.message.lower() for finding in findings)
+        print(
+            "INFO: Refresh-only summary: "
+            f"rules={len(payload.get('rules', []))}, "
+            f"cache={cache_file_for_rule_repo(args.rule_repo) if args.rule_repo else '<unconfigured>'}."
+        )
+        return 1 if failed else 0
+
     diff_paths = diff_paths_from_args(args)
     blocked_paths = blocked_paths_from_args(args)
     generated_paths = generated_paths_from_args(args)

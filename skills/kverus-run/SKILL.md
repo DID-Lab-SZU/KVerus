@@ -56,7 +56,8 @@ All phases that edit Verus code should consult `../kverus-common/references/` wh
    - Example: if `target=src/lib.rs`, copy to `$ORIG_DIR/src/lib.rs`.
 5. Create `out_dir` if it does not exist.
 6. Set `AGENT_DIR` to the installed agent directory for script calls. Skills are read from `$AGENT_DIR/skills`.
-7. Print a summary: mode (single/directory), file count, target path, verify command.
+7. If `KVERUS_POSTPROCESS_RULE_REPO` is configured, run the postprocess checker with `--cache-status`. When the cache is stale or missing and subagents are available, delegate one `--refresh-only` command to a subagent. The subagent must make no source edits and preserve the old cache on failure. Continue the pipeline immediately; never perform or wait for a GitHub request in the main agent. If no subagent is available, proceed with cached or static rules.
+8. Print a summary: mode (single/directory), file count, target path, verify command.
 
 ---
 
@@ -260,7 +261,7 @@ After completing the audit reports:
 Run final cleanup only after Eval and Semantic Audit gates pass or the user explicitly chooses to continue. Use `kverus-postprocess` when a verification command and target paths are available; otherwise skip this phase unless the user provides an equivalent postprocess command.
 
 1. Follow the `kverus-postprocess` skill workflow:
-   - Refresh dynamic review rules and inspect findings.
+   - Inspect dynamic review rules from the latest available cache; do not refresh GitHub synchronously.
    - Run verification.
    - Delegate redundant proof-assert simplification to `kverus-strip`.
    - Re-run verification.
