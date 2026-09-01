@@ -23,8 +23,8 @@ If `verify` is missing, ask for it before editing. If `target-dirs` is missing, 
 ## Arguments
 
 - `verify` (required): The full verification command, e.g. `cargo verus focus my_crate`.
-- `target-dirs` (required for broader manual stripping): Comma-separated source directories **or single `.rs` files** to scan, e.g. `src/,specs/` or `ostd/specs/mm/page_table/owners.rs`. A path the script would otherwise need to discover can be passed directly here.
-- `function` (optional): Comma-separated function short names to restrict stripping to, e.g. `lemma_vaddr_of_eq_int`. Only matching functions are processed; all others in the file are left untouched.
+- `target-dirs` (required for broader manual stripping): Comma-separated source directories **or single `.rs` files** to scan, e.g. `src/,specs/` or `src/model/owners.rs`. A path the script would otherwise need to discover can be passed directly here.
+- `function` (optional): Comma-separated function short names to restrict stripping to, e.g. `lemma_index_bounds`. Only matching functions are processed; all others in the file are left untouched.
 - `base` (optional): Git base ref for changed-file discovery, e.g. `origin/main`.
 
 ## Shared Verus References
@@ -57,7 +57,7 @@ To simplify a single function (or a few) instead of a whole file or directory, p
   --format-command '<format command>'
 ```
 
-Names are matched against the short function name (e.g. `lemma_vaddr_of_eq_int`); qualified paths like `Impl::lemma_foo` are also accepted. Pair `--function` with `--verify-command '<verify> -- --verify-only-module <module_path>'` so each trial re-verifies just the relevant module rather than the whole crate.
+Names are matched against the short function name (e.g. `lemma_index_bounds`); qualified paths like `Impl::lemma_foo` are also accepted. Pair `--function` with `--verify-command '<verify> -- --verify-only-module <module_path>'` so each trial re-verifies just the relevant module rather than the whole crate.
 
 To restrict stripping to only the functions you actually changed in this diff, pass `--modified-only` (typically with `--base <git-base>`). It intersects discovered function ranges with the added lines of `git diff` (committed `base...HEAD` plus the worktree diff) and skips every function whose lines were not added by the change. This is what `kverus-postprocess` uses by default so it only touches newly modified proof code.
 

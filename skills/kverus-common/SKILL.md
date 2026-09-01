@@ -1,6 +1,6 @@
 ---
 name: kverus-common
-description: Shared Rust/Verus proof references and Asterinas/VOSTD project practices for other KVerus skills. Use when Codex is repairing Verus failures, adding specifications, migrating Rust, classifying axioms or trusted boundaries, modeling external APIs, cleaning proof scaffolding, or working with Asterinas/VOSTD verification conventions.
+description: Shared Rust/Verus proof references for other KVerus skills. Use when Codex is repairing Verus failures, adding specifications, migrating Rust, classifying axioms or trusted boundaries, modeling external APIs, or cleaning proof scaffolding.
 ---
 
 # KVerus Common
@@ -18,17 +18,20 @@ Before editing Verus code, load only the relevant reference:
 - `ghost`, `tracked`, `Tracked<T>`, `Ghost<T>`, `@`, or erasure issues: read `references/ghost-tracked.md`.
 - Axiom-like declarations, external API specifications, trusted boundaries, or proof cleanup: read `references/proof-engineering-and-trust-boundaries.md`.
 - Missing or incomplete vstd specifications for `std`, `core`, or `alloc` APIs: read `references/std-external-specifications.md` together with `references/proof-engineering-and-trust-boundaries.md`.
-- Asterinas/VOSTD verification commands, repository context, external-spec placement, project proof conventions, or historical examples: read `references/asterinas-vostd-practices.md` in addition to the relevant general reference.
 - Concurrency, invariants, permissions, or state-machine navigation: read `references/tokenized-state-machine.md`.
 - Verus-unsupported features, forced rewrites, or trait associated constant limitations: read `references/unsupported-features/index.md`, then load the relevant topic file from that directory.
+
+## Project Policy
+
+Read the target workspace's instructions before applying these general references. For an Asterinas/VOSTD workspace, read `AGENTS.md` and `docs/coding-guidelines/README.md`, then follow the relevant linked guideline.
 
 ## Source Path Resolution
 
 Resolve every citation from the target workspace; never assume a machine-specific absolute path.
 
-1. Start at the target repository root. If it contains `ostd/`, `verified_libs/`, and `tools/verus/`, treat it as the VOSTD root and `tools/verus/` as the Verus root.
-2. If that layout is absent, inspect the verification command, repository scripts and configuration, and submodule metadata to locate the active Verus checkout. Accept a candidate as the Verus root only when it contains the cited `source/docs/guide/src` and `source/vstd` trees.
-3. Resolve `source/docs/...`, `source/vstd/...`, and `examples/...` relative to the discovered Verus root. Resolve `ostd/...`, `verified_libs/...`, and `tools/verus/...` relative to the discovered VOSTD root.
+1. Inspect the verification command, repository scripts and configuration, environment, and submodule metadata to locate the active Verus checkout.
+2. Accept a candidate as the Verus root only when it contains the cited `source/docs/guide/src` and `source/vstd` trees.
+3. Resolve `source/docs/...`, `source/vstd/...`, and `examples/...` relative to the discovered Verus root. Resolve project paths relative to the target workspace root.
 4. Keep citations in these root-relative forms instead of resolving them against the skill directory. Confirm a cited file exists before relying on it; if no active checkout can be located, report the unresolved citation rather than inventing a path.
 
 ## Global Verus Guide Rules

@@ -1,4 +1,4 @@
 interface:
   display_name: "KVerus Common"
-  short_description: "Shared Verus proof and Asterinas/VOSTD references"
-  default_prompt: "Use $kverus-common for Verus proofs, trust boundaries, and Asterinas/VOSTD conventions."
+  short_description: "Shared Verus proof references"
+  default_prompt: "Use $kverus-common for Verus proofs, trust boundaries, and target repository conventions."

@@ -44,7 +44,7 @@ NORMATIVE_RE = re.compile(
 RELEVANT_RE = re.compile(
     r"\b(axiom|lemma|proof|verus|kverus|comment|doc|rustdoc|fmt|format|"
     r"warning|deprecated|allow|assume|admit|external_body|trusted|trust|"
-    r"source code|asterinas source|spec|trigger|cast|as int|matches|revert)\b",
+    r"source code|original source|spec|trigger|cast|as int|matches|revert)\b",
     re.IGNORECASE,
 )
 

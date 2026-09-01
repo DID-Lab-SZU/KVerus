@@ -33,7 +33,7 @@ Check uncommitted changes (or changes since a given commit) for three categories
 ## Arguments
 
 - `commit` (optional): A git commit hash. When provided, review changes from that commit to HEAD. When omitted, review all uncommitted changes (unstaged + staged).
-- `verify` (required): The verification command to run, e.g. `cargo dv verify --targets ostd`.
+- `verify` (required): The target repository's documented verification command.
 
 ## Shared Verus References
 

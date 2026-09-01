@@ -1,15 +1,11 @@
 # Standard-Library External Specifications
 
-Source scope: Rust standard library, Verus guide, and project practice
+Source scope: Rust standard library and Verus guide
 
 Sources:
 
 - `source/docs/guide/src/reference-assume-specification.md`
 - `source/docs/guide/src/reference-unwind-sig.md`
-- [VOSTD PR #699](https://github.com/asterinas/vostd/pull/699)
-- [VOSTD PR #704](https://github.com/asterinas/vostd/pull/704)
-- [Current VOSTD B-tree external specifications](https://github.com/asterinas/vostd/blob/main/verified_libs/vstd_extra/src/external/btree.rs)
-- [Current VOSTD external-spec module](https://github.com/asterinas/vostd/blob/main/verified_libs/vstd_extra/src/external/mod.rs)
 
 Use this reference when verified code calls a `std`, `core`, or `alloc` API for
 which the active vstd has no sufficient specification. Also load
@@ -77,18 +73,11 @@ allocator parameters, trait bounds, receiver, arguments, and return type.
   conclusions as library behavior. Reject vacuous contracts and guarantees that
   are stronger than the source supports.
 
-Prefer extending an existing model shared by neighboring operations. The B-tree
-case from VOSTD PR #704 illustrates a mutable cursor model, borrowed-key ordering
-requirements, `old`/`final` mutation relations, and grouped reusable facts; it
-is a design example, not a template to copy for unrelated APIs.
+Prefer extending an existing model shared by neighboring operations.
 
 ## Placement and Review
 
-Use the repository's dedicated external-spec library and module exports. In
-Asterinas/VOSTD, place the contract in
-`verified_libs/vstd_extra/src/external/<topic>.rs`, export it through
-`verified_libs/vstd_extra/src/external/mod.rs`, and keep callers on the original
-qualified standard-library API.
+Use the repository's dedicated external-spec library and module exports.
 
 Before editing, establish the proposed API, location, source basis, contract,
 models, panic behavior, and TCB impact.

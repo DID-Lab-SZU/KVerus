@@ -7,7 +7,6 @@ Sources:
 - `source/docs/guide/src/llmforverusproof.md:185-210`
 - `source/docs/guide/src/extensional_equality.md` (auto-promotion of `==` to `=~=`)
 - `source/docs/guide/src/modes.md` (exec/spec/proof mode system, derived for non-auto-promotion contexts)
-- Practice from `ostd/specs/mm/page_table/` refactoring
 
 ## Non-membership by Contradiction
 
@@ -65,44 +64,5 @@ assert(S1 == S2) by {
         let i = choose|i| ...;
         S1.introduction_lemma(m, i);
     };
-};
-```
-
-## Bridge Lemma Pattern for Recursive Union Sets
-
-> **Note:** This pattern is from project practice (not in official Verus docs).
-
-When a `Set` is defined via recursive union (replacing `Set::new_assuming_finite`), the `Set::union` broadcast (`s1.union(s2).contains(a) == (s1.contains(a) || s2.contains(a))`) fires automatically, but extracting/introducing elements requires explicit bridge lemma calls:
-
-- **Elimination** (before `choose`): Call `container.elimination_lemma(m)` to establish the existential before `choose|i| ...`
-- **Introduction** (to prove membership): Call `container.introduction_lemma(m, witness_index)` to prove `container.contains(m)` from a known child's membership
-
-```rust
-// Elimination: extract which child contains m
-container.view_mappings_contains(m);
-let i = choose|i: int| ... container.children[i] ... .contains(m);
-
-// Introduction: prove container membership from child witness
-container.view_mappings_intro(m, i);
-```
-
-## Set Arithmetic with Difference and Union
-
-> **Note:** This pattern is from project practice (not in official Verus docs).
-
-When proving `(A - B).union(C) == A - D + E` (common in replace/swap operations), break into element-level reasoning:
-
-```rust
-assert forall|m| lhs.contains(m) implies rhs.contains(m) by {
-    if C.contains(m) {
-        if E.contains(m) { /* direct */ }
-        else {
-            // m in C but not E => m in B-D subset of B => m in A (via intro)
-            A.introduction_lemma(m, ...);
-        }
-    } else {
-        // m in A-B => m in A, not in B => not in D (since D ⊆ B, prove by contradiction)
-        if D.contains(m) { D_subset_B.introduction_lemma(m, ...); assert(false); }
-    }
 };
 ```
