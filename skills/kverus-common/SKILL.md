@@ -45,6 +45,10 @@ Carry these rules into all KVerus skills unless the user explicitly requests a d
 5. For loops, add invariants strong enough for entry, preservation, and exit reasoning; include surrounding facts explicitly when loop isolation requires them.
 6. Use `assert(...) by (bit_vector)` for bitwise facts, `assert(...) by (compute_only)` for fully computable spec facts, and `assert(...) by (nonlinear_arith)` for nonlinear arithmetic facts.
 7. Treat `#[verifier::external_body]` as a trusted verified/unverified boundary, not as an ordinary proof hint.
+8. Write contiguous bounds as chained comparisons when adjacent comparisons share the same intermediate expressions. For example, use `a <= b <= c < d` instead of `a <= b && b <= c && c < d`, including in contracts, invariants, and proof assertions. Combine comparisons only when the chained form is logically equivalent; do not add a missing relation or strengthen a contract merely to form a chain.
+9. When two or more facts depend on the payload of the same `Option`, bind it once with `option matches Some(value) ==> { &&& ... }`. Do not repeat `option is Some ==> ... option->0 ...` clauses. Keep a single implication as-is when binding the payload would not improve the expression.
+10. For every newly added Verus struct, determine its mode explicitly. Actively try `ghost struct` for constants, models, invariant markers, and other types used only by specifications or proofs. Use `tracked struct` for linear proof resources, and retain an ordinary struct whenever the type has runtime state or participates in executable behavior. Verify the selected mode instead of assuming a zero-sized marker must be executable.
+11. Use `use` declarations as much as possible for proof-only functions, lemmas, broadcast groups, and other proof symbols instead of repeatedly writing long fully qualified paths. Apply this throughout proof code, including contracts, lemma calls, `reveal`, and `broadcast use` expressions. Prefer explicit imports that remain unambiguous; retain a qualified path when it makes a rare reference clearer.
 
 ## Source Basis
 
